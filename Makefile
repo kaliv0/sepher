@@ -1,29 +1,22 @@
-all: lint test
+all: lint build
+
+%:
+	@echo "Running $@"
+	@cargo $@
 
 lint:
-	cargo fmt
-	cargo clippy
+	@echo "Running $@"
+	@cargo fmt
+	@cargo clippy --allow-dirty --fix
 
-test:
-	cargo test
-
-#check:
-#	cargo check
-
-build:
-	cargo build
+.PHONY: all
 
 #build_release:
-#	cargo build --verbose --release
+#	cargo build --release
 
 #install_debug: build_debug
 #	cp target/debug/$(EXEC) $(PREFIX)/bin
-
+#
 #install: build_release
 #	cp target/release/$(EXEC) $(PREFIX)/bin
 
-run:
-	cargo run
-
-clean:
-	cargo clean

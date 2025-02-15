@@ -1,15 +1,12 @@
 use crossterm::event::{read, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
 }
 
 impl Editor {
-    pub const fn default() -> Self {
-        Self { should_quit: false }
-    }
-
     pub fn run(&mut self) -> Result<(), std::io::Error> {
         enable_raw_mode()?;
         loop {
