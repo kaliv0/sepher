@@ -9,9 +9,9 @@
 use sepher::editor::Editor;
 
 fn main() {
-    if let Err(err) = Editor::new().run() {
+    if let Err(err) = Editor::default().run() {
         eprintln!("{err}");
         std::process::exit(1);
     }
-    print!("Goodbye.\r\n");
+    print!("Goodbye.\r\n"); // TODO: remove
 }

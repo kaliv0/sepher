@@ -6,18 +6,10 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub const fn new() -> Self {
+    pub const fn default() -> Self {
         Self { should_quit: false }
     }
 
-    // pub fn run(&mut self) {
-    //     if let Err(err) = self.repl() {
-    //         panic!("{err:#?}");
-    //     }
-    //     print!("Goodbye.\r\n");
-    // }
-
-    // pub fn repl(&mut self) -> Result<(), std::io::Error> {
     pub fn run(&mut self) -> Result<(), std::io::Error> {
         enable_raw_mode()?;
         loop {
