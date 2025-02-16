@@ -5,7 +5,7 @@ use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
 
 /// terminal size
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Size {
     // TODO: rearrange to aligne with x-y / cols-rows??
     pub height: usize,

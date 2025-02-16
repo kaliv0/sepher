@@ -1,6 +1,6 @@
 use crate::terminal::{Position, Size, Terminal};
 use crate::view::View;
-use crossterm::event::{read, Event, Event::Key, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
 use std::cmp::min;
 use std::env;
 use std::io::Error;
@@ -43,35 +43,50 @@ impl Editor {
                 break;
             }
             let event = read()?;
-            self.evaluate_event(&event)?;
+            self.evaluate_event(event)?;
         }
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
-        if let Key(KeyEvent {
-            code,
-            modifiers,
-            // kind: KeyEventKind::Press,  //NB: for Windows only
-            ..
-        }) = event
-        {
-            match code {
-                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
+    // NB: we don't pass event as ref to spare ourselves the headache in pattern matching -> TODO: refactor with ref
+    #[allow(clippy::needless_pass_by_value)]
+    fn evaluate_event(&mut self, event: Event) -> Result<(), Error> {
+        match event {
+            Event::Key(KeyEvent {
+                code,
+                modifiers,
+                // kind: KeyEventKind::Press, //NB: for Windows only
+                ..
+            }) => match (code, modifiers) {
+                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
-                KeyCode::Up
-                | KeyCode::Down
-                | KeyCode::Left
-                | KeyCode::Right
-                | KeyCode::PageDown
-                | KeyCode::PageUp
-                | KeyCode::End
-                | KeyCode::Home => {
-                    self.move_point(*code)?;
+                (
+                    KeyCode::Up
+                    | KeyCode::Down
+                    | KeyCode::Left
+                    | KeyCode::Right
+                    | KeyCode::PageDown
+                    | KeyCode::PageUp
+                    | KeyCode::End
+                    | KeyCode::Home,
+                    _,
+                ) => {
+                    self.move_point(code)?;
                 }
-                _ => (),
+                _ => {}
+            },
+            Event::Resize(width_u16, height_u16) => {
+                // TODO: probably we should get rid of u16 precocious re-casting? -> similar in Terminal::size()
+                // clippy::as_conversions: Will run into problems for rare edge case systems where usize < u16
+                #[allow(clippy::as_conversions)]
+                let height = height_u16 as usize;
+                // clippy::as_conversions: Will run into problems for rare edge case systems where usize < u16
+                #[allow(clippy::as_conversions)]
+                let width = width_u16 as usize;
+                self.view.resize(Size { height, width });
             }
+            _ => {}
         }
         Ok(())
     }
@@ -108,7 +123,7 @@ impl Editor {
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), Error> {
+    fn refresh_screen(&mut self) -> Result<(), Error> {
         Terminal::hide_cursor()?;
         Terminal::move_cursor_to(Position::default())?;
         if self.should_quit {
