@@ -2,19 +2,19 @@ use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
 use crossterm::{queue, Command};
-use std::fmt::Display;
 use std::io::{stdout, Error, Write};
 
+/// terminal size
 #[derive(Copy, Clone)]
 pub struct Size {
-    //TODO: terminal size
+    // TODO: rearrange to aligne with x-y / cols-rows??
     pub height: usize,
     pub width: usize,
 }
 
+/// cursor position
 #[derive(Copy, Clone, Default)]
 pub struct Position {
-    //TODO: cursor position
     pub col: usize,
     pub row: usize,
 }
@@ -23,7 +23,12 @@ pub struct Terminal {}
 
 impl Terminal {
     pub fn terminate() -> Result<(), Error> {
-        // Self::execute()?;  //TODO: already invoked in last refresh_screen
+        // Self::execute()?;  // already invoked in last refresh_screen
+
+        //TODO: move Terminal::clear_screen()?, Terminal::show_cursor()? and Terminal::execute()?;
+        // from refresh_screen screen
+        // we should invoke same logic if program crashes -> especially disable_raw_mode
+        // run terminate() in error handling inside main???
         disable_raw_mode()?;
         Ok(())
     }
@@ -64,15 +69,15 @@ impl Terminal {
         Ok(())
     }
 
-    // pub fn print(string: &str) -> Result<(), Error> {
-    pub fn print<T: Display>(string: T) -> Result<(), Error> {
-        //TODO: we need Display trait implemented instead of &str -> format! with welcome_message
+    //TODO: should we borrow or move string into print?
+    pub fn print(string: &str) -> Result<(), Error> {
         Self::queue_command(Print(string))?;
         Ok(())
     }
 
     // Any coordinate `z` truncated to `usize` if `usize` < `z` < `u16`
     pub fn size() -> Result<Size, Error> {
+        // TODO: refactor and swap width-height
         let (width_u16, height_u16) = size()?;
         #[allow(clippy::as_conversions)]
         let height = height_u16 as usize;

@@ -1,8 +1,7 @@
-Clear the screen
+Assignment 7: Code Review
 
 ------------------
-remove \r?
-
 fix window resize
 
 remove clippy allow annotations
+handle program crash -> restore normal mode of terminal, clear screen etc

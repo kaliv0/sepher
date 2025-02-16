@@ -1,10 +1,10 @@
 use crate::terminal::{Position, Size, Terminal};
+use crate::view::View;
 use crossterm::event::{read, Event, Event::Key, KeyCode, KeyEvent, KeyModifiers};
 use std::cmp::min;
 use std::io::Error;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
+/// location of the cursor within the text
 #[derive(Copy, Clone, Default)]
 struct Location {
     x: usize,
@@ -14,7 +14,8 @@ struct Location {
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
-    location: Location, // location of cursor within text
+    location: Location,
+    view: View,
 }
 
 impl Editor {
@@ -67,8 +68,6 @@ impl Editor {
     }
 
     fn move_point(&mut self, key_code: KeyCode) -> Result<(), Error> {
-        // TODO: refactor without destructuring location and creating new one at the end
-        // let Location { mut x, mut y } = self.location;
         let Size { height, width } = Terminal::size()?;
         match key_code {
             KeyCode::Up => {
@@ -97,7 +96,6 @@ impl Editor {
             }
             _ => (),
         }
-        // self.location = Location { x, y };
         Ok(())
     }
 
@@ -108,9 +106,8 @@ impl Editor {
             // TODO: move logic inside terminate??
             // https://stackoverflow.com/questions/78174550/crossterm-not-clearing-screen-properly
             Terminal::clear_screen()?;
-            // Terminal::purge_screen()?;
         } else {
-            Self::draw_rows()?;
+            self.view.render()?;
             Terminal::move_cursor_to(Position {
                 col: self.location.x,
                 row: self.location.y,
@@ -118,51 +115,6 @@ impl Editor {
         }
         Terminal::show_cursor()?;
         Terminal::execute()?;
-        Ok(())
-    }
-
-    fn draw_rows() -> Result<(), Error> {
-        let Size { height, .. } = Terminal::size()?;
-        for current_row in 0..height - 1 {
-            Terminal::clear_line()?;
-            // we allow this since we don't care if our welcome message is put _exactly_ in the middle.
-            // it's allowed to be a bit up or down
-            #[allow(clippy::integer_division)]
-            if current_row == height / 3 {
-                Self::draw_welcome_message()?;
-            } else {
-                // Self::draw_empty_row()?;
-                // Terminal::print("~\r\n")?;
-                Terminal::print("~\r\n")?;
-            }
-            // if current_row.saturating_add(1) < height {
-            //     Terminal::print("\r\n")?;
-            // }
-        }
-        Terminal::print("~")?;
-        Ok(())
-    }
-
-    //TODO: remove function
-    // fn draw_empty_row() -> Result<(), Error> {
-    //     Terminal::print("~")?;
-    //     Ok(())
-    // }
-
-    fn draw_welcome_message() -> Result<(), Error> {
-        let mut welcome_message = format!("No, it's not VIM -- version {VERSION}");
-        let width = Terminal::size()?.width;
-        let len = welcome_message.len();
-
-        // we allow this since we don't care if our welcome message is put _exactly_ in the middle.
-        // it's allowed to be a bit to the left or right.
-        #[allow(clippy::integer_division)]
-        let padding = (width.saturating_sub(len)) / 2;
-        let spaces = " ".repeat(padding.saturating_sub(1));
-
-        welcome_message = format!("~{spaces}{welcome_message}\r\n");
-        welcome_message.truncate(width);
-        Terminal::print(&welcome_message)?;
         Ok(())
     }
 }
