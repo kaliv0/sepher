@@ -1,5 +1,9 @@
-use crossterm::event::{read, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crate::terminal::{Position, Size, Terminal};
+use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
+use std::io::Error;
+
+// const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Default)]
 pub struct Editor {
@@ -7,31 +11,90 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn run(&mut self) -> Result<(), std::io::Error> {
-        enable_raw_mode()?;
+    // pub const fn default() -> Self {
+    //     Self { should_quit: false }
+    // }
+
+    pub fn run(&mut self) {
+        // TODO: move error handling inside main?
+        Terminal::initialize().unwrap();
+        let result = self.repl();
+        Terminal::terminate().unwrap();
+        result.unwrap();
+    }
+
+    fn repl(&mut self) -> Result<(), Error> {
         loop {
-            if let Key(KeyEvent {
-                code,
-                modifiers,
-                kind,
-                state,
-            }) = read()?
-            {
-                println!(
-                    "Code: {code:?} Modifiers: {modifiers:?} Kind: {kind:?} State: {state:?} \r"
-                );
-                match code {
-                    Char('q') if modifiers == KeyModifiers::CONTROL => {
-                        self.should_quit = true;
-                    }
-                    _ => (),
-                }
-            }
+            self.refresh_screen()?;
             if self.should_quit {
                 break;
             }
+            let event = read()?;
+            self.evaluate_event(&event);
         }
-        disable_raw_mode()?;
+        Ok(())
+    }
+
+    fn evaluate_event(&mut self, event: &Event) {
+        if let Key(KeyEvent {
+            code, modifiers, ..
+        }) = event
+        {
+            match code {
+                Char('q') if *modifiers == KeyModifiers::CONTROL => {
+                    self.should_quit = true;
+                }
+                _ => (),
+            }
+        }
+    }
+
+    fn refresh_screen(&self) -> Result<(), Error> {
+        Terminal::hide_cursor()?;
+        if self.should_quit {
+            // Terminal::clear_screen()?;
+            // Terminal::print("Goodbye.\r\n")?;
+            Terminal::purge_screen()?; // TODO: doesn't clear screen as expected??
+        } else {
+            Self::draw_rows()?;
+            Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+        }
+        Terminal::show_cursor()?;
+        Terminal::execute()?;
+        Ok(())
+    }
+
+    fn draw_rows() -> Result<(), Error> {
+        let Size { height, .. } = Terminal::size()?;
+        for current_row in 0..height {
+            Terminal::clear_line()?;
+            if current_row == height / 3 {
+                Self::draw_welcome_message()?;
+            } else {
+                Self::draw_empty_row()?;
+            }
+            //TODO: refactor -> no need to check curr_row + 1 on each iteration
+            if current_row + 1 < height {
+                Terminal::print("\r\n")?;
+            }
+        }
+        Ok(())
+    }
+    //TODO: remove function
+    fn draw_empty_row() -> Result<(), Error> {
+        Terminal::print("~")?;
+        Ok(())
+    }
+
+    fn draw_welcome_message() -> Result<(), Error> {
+        let mut welcome_message = format!("No, it's not VIM -- version {VERSION}");
+        let width = Terminal::size()?.width as usize; // TODO
+        let len = welcome_message.len();
+        let padding = (width - len) / 2;
+        let spaces = " ".repeat(padding - 1);
+        welcome_message = format!("~{spaces}{welcome_message}");
+        welcome_message.truncate(width);
+        Terminal::print(&welcome_message)?; //TODO: borrow instead of move?
         Ok(())
     }
 }
