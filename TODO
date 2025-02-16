@@ -2,3 +2,7 @@ Clear the screen
 
 ------------------
 remove \r?
+
+fix window resize
+
+remove clippy allow annotations

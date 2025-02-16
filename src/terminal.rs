@@ -8,47 +8,37 @@ use std::io::{stdout, Error, Write};
 #[derive(Copy, Clone)]
 pub struct Size {
     //TODO: terminal size
-    pub height: u16, //TODO: usize?
-    pub width: u16,
+    pub height: usize,
+    pub width: usize,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Position {
     //TODO: cursor position
-    pub x: u16,
-    pub y: u16,
+    pub col: usize,
+    pub row: usize,
 }
 
 pub struct Terminal {}
 
 impl Terminal {
     pub fn terminate() -> Result<(), Error> {
-        Self::execute()?;
+        // Self::execute()?;  //TODO: already invoked in last refresh_screen
         disable_raw_mode()?;
         Ok(())
     }
 
     pub fn initialize() -> Result<(), Error> {
         enable_raw_mode()?;
-        // Self::clear_screen()?;
-        Self::purge_screen()?;
-        Self::move_cursor_to(Position { x: 0, y: 0 })?;
+        Self::clear_screen()?;
+        Self::move_cursor_to(Position { col: 0, row: 0 })?;
         Self::execute()?;
-        Ok(())
-    }
-
-    pub fn purge_screen() -> Result<(), Error> {
-        Self::queue_command(Clear(ClearType::Purge))?;
-        Ok(())
-    }
-
-    pub fn end_screen() -> Result<(), Error> {
-        Self::queue_command(Clear(ClearType::FromCursorDown))?;
         Ok(())
     }
 
     pub fn clear_screen() -> Result<(), Error> {
         Self::queue_command(Clear(ClearType::All))?;
+        Self::queue_command(Clear(ClearType::Purge))?; // needed especially for ending the program
         Ok(())
     }
 
@@ -57,8 +47,10 @@ impl Terminal {
         Ok(())
     }
 
+    // Moves the cursor to the given Position. -> Will be truncated to `u16::MAX` if bigger.
     pub fn move_cursor_to(position: Position) -> Result<(), Error> {
-        Self::queue_command(MoveTo(position.x, position.y))?;
+        #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+        Self::queue_command(MoveTo(position.col as u16, position.row as u16))?;
         Ok(())
     }
 
@@ -79,9 +71,13 @@ impl Terminal {
         Ok(())
     }
 
+    // Any coordinate `z` truncated to `usize` if `usize` < `z` < `u16`
     pub fn size() -> Result<Size, Error> {
-        //TODO: refactor to one line -> why do we swap width and height?
-        let (width, height) = size()?;
+        let (width_u16, height_u16) = size()?;
+        #[allow(clippy::as_conversions)]
+        let height = height_u16 as usize;
+        #[allow(clippy::as_conversions)]
+        let width = width_u16 as usize;
         Ok(Size { height, width })
     }
 

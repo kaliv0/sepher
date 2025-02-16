@@ -1,4 +1,4 @@
-all: lint build
+all: lint run
 
 %:
 	@echo "Running $@"
