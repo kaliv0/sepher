@@ -2,7 +2,7 @@ use crate::util::Size;
 use crossterm::cursor::{Hide, Show};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen,
-    LeaveAlternateScreen,
+    LeaveAlternateScreen, SetTitle,
 };
 use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
@@ -67,6 +67,11 @@ impl Terminal {
         #[allow(clippy::as_conversions)]
         let width = width_u16 as usize;
         Ok(Size { height, width })
+    }
+
+    pub fn set_title(title: &str) -> Result<(), Error> {
+        Self::queue_command(SetTitle(title))?;
+        Ok(())
     }
 
     fn queue_command<T: Command>(command: T) -> Result<(), Error> {

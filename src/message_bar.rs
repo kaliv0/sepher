@@ -1,4 +1,8 @@
-use std::time::Instant;
+use crate::ui_component::UIComponent;
+use crate::util::Size;
+use std::time::{Duration, Instant};
+
+const DEFAULT_DURATION: Duration = Duration::new(5, 0);
 
 struct Message {
     text: String,
@@ -12,6 +16,12 @@ impl Default for Message {
             text: String::new(),
             time: Instant::now(),
         }
+    }
+}
+
+impl Message {
+    fn is_expired(&self) -> bool {
+        Instant::now().duration_since(self.time) > DEFAULT_DURATION
     }
 }
 
@@ -33,4 +43,15 @@ impl MessageBar {
         self.cleared_after_expiry = false;
         self.set_needs_redraw(true);
     }
+}
+
+impl UIComponent for MessageBar {
+    fn needs_redraw(&self) -> bool {
+        (!self.cleared_after_expiry && self.current_message.is_expired()) || self.needs_redraw
+    }
+    fn set_needs_redraw(&mut self, value: bool) {
+        self.needs_redraw = value;
+    }
+    //TODO: not LGTM -> basically dismissing this methods?!
+    fn set_size(&mut self, _: Size) {}
 }

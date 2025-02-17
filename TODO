@@ -1,1 +1,6 @@
+ROADMAP:
+
+Editor::new
+
+-----------------------
 remove as re-casting because of usize < u16 -> e.g. terminal.size()

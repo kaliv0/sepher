@@ -1,5 +1,6 @@
 use crate::util::Size;
 
+//TODO: refactor/remove -> NB set_size not used in Message_bar
 pub trait UIComponent {
     fn needs_redraw(&self) -> bool;
 
