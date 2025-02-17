@@ -7,7 +7,7 @@ use std::io::{stdout, Error, Write};
 /// terminal size
 #[derive(Copy, Clone, Default)]
 pub struct Size {
-    // TODO: rearrange to aligne with x-y / cols-rows??
+    // TODO: rearrange to align with x-y / cols-rows??
     pub height: usize,
     pub width: usize,
 }

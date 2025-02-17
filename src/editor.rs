@@ -43,21 +43,21 @@ impl Editor {
                 break;
             }
             let event = read()?;
-            self.evaluate_event(event)?;
+            self.evaluate_event(&event)?;
         }
         Ok(())
     }
 
     // NB: we don't pass event as ref to spare ourselves the headache in pattern matching -> TODO: refactor with ref
     #[allow(clippy::needless_pass_by_value)]
-    fn evaluate_event(&mut self, event: Event) -> Result<(), Error> {
+    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
         match event {
             Event::Key(KeyEvent {
                 code,
                 modifiers,
                 // kind: KeyEventKind::Press, //NB: for Windows only
                 ..
-            }) => match (code, modifiers) {
+            }) => match (code, *modifiers) {
                 (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
@@ -80,10 +80,10 @@ impl Editor {
                 // TODO: probably we should get rid of u16 precocious re-casting? -> similar in Terminal::size()
                 // clippy::as_conversions: Will run into problems for rare edge case systems where usize < u16
                 #[allow(clippy::as_conversions)]
-                let height = height_u16 as usize;
+                let height = *height_u16 as usize;
                 // clippy::as_conversions: Will run into problems for rare edge case systems where usize < u16
                 #[allow(clippy::as_conversions)]
-                let width = width_u16 as usize;
+                let width = *width_u16 as usize;
                 self.view.resize(Size { height, width });
             }
             _ => {}
@@ -91,7 +91,7 @@ impl Editor {
         Ok(())
     }
 
-    fn move_point(&mut self, key_code: KeyCode) -> Result<(), Error> {
+    fn move_point(&mut self, key_code: &KeyCode) -> Result<(), Error> {
         let Size { height, width } = Terminal::size()?;
         match key_code {
             KeyCode::Up => {
