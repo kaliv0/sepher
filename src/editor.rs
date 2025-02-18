@@ -1,144 +1,167 @@
-use crate::terminal::{Position, Size, Terminal};
+use crate::command_bar::CommandBar;
+use crate::message_bar::MessageBar;
+use crate::status_bar::StatusBar;
+use crate::terminal::Terminal;
+use crate::util::Size;
 use crate::view::View;
-use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
-use std::cmp::min;
+use crossterm::event::read;
 use std::env;
 use std::io::Error;
+use std::panic::{set_hook, take_hook};
 
-/// location of the cursor within the text
-#[derive(Copy, Clone, Default)]
-struct Location {
-    x: usize,
-    y: usize,
+#[derive(Eq, PartialEq, Default)]
+enum PromptType {
+    Search,
+    Save,
+    #[default]
+    None,
+}
+
+impl PromptType {
+    fn is_none(&self) -> bool {
+        *self == PromptType::None
+    }
 }
 
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
-    location: Location,
     view: View,
+    status_bar: StatusBar,
+    message_bar: MessageBar,
+    command_bar: CommandBar,
+    prompt_type: PromptType,
+    terminal_size: Size,
+    title: String,
+    // quit_times: u8,
 }
 
 impl Editor {
-    pub fn run(&mut self) {
-        // TODO: move error handling inside main?
-        Terminal::initialize().unwrap();
-        self.handle_args();
-        let result = self.repl();
-        Terminal::terminate().unwrap();
-        result.unwrap();
-    }
+    pub fn new() -> Result<Self, Error> {
+        let current_hook = take_hook();
+        set_hook(Box::new(move |panic_info| {
+            //TODO: replace with 'Terminal::terminate()?' without assignment ??
+            let _ = Terminal::terminate();
+            current_hook(panic_info);
+        }));
+        Terminal::initialize()?;
 
-    fn handle_args(&mut self) {
+        let mut editor = Self::default();
+        let size = Terminal::size().unwrap_or_default();
+        editor.handle_resize_command(size);
+        editor.update_message("HELP: Ctrl-F = find | Ctrl-S = save | Ctrl-Q = quit");
+
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
-            self.view.load(file_name);
+            // debug_assert!(!file_name.is_empty());
+            if editor.view.load(file_name).is_err() {
+                editor.update_message(&format!("ERROR: Could not open file: {file_name}"));
+            }
+        }
+        editor.refresh_status();
+        Ok(editor)
+    }
+
+    //TODO: rename 'handle_resize'
+    fn handle_resize_command(&mut self, size: Size) {
+        self.terminal_size = size;
+        self.view.resize(Size {
+            height: size.height.saturating_sub(2),
+            width: size.width,
+        });
+        let bar_size = Size {
+            height: 1,
+            width: size.width,
+        };
+        self.message_bar.resize(bar_size);
+        self.status_bar.resize(bar_size);
+        self.command_bar.resize(bar_size);
+    }
+
+    fn update_message(&mut self, new_message: &str) {
+        self.message_bar.update_message(new_message);
+    }
+
+    fn refresh_status(&mut self) {
+        let status = self.view.get_status();
+        //TODO: change to "{file_name} - sepher"
+        let title = status.file_name.to_string();
+        self.status_bar.update_status(status);
+        if title != self.title && matches!(Terminal::set_title(&title), Ok(())) {
+            // TODO: test alternative
+            // if title != self.title && Terminal::set_title(&title).is_ok() {
+            self.title = title;
         }
     }
 
-    fn repl(&mut self) -> Result<(), Error> {
+    ///////////////////////////////
+    pub fn run(&mut self) {
         loop {
-            self.refresh_screen()?;
+            self.refresh_screen();
             if self.should_quit {
                 break;
             }
-            let event = read()?;
-            self.evaluate_event(&event)?;
-        }
-        Ok(())
-    }
-
-    // NB: we don't pass event as ref to spare ourselves the headache in pattern matching -> TODO: refactor with ref
-    #[allow(clippy::needless_pass_by_value)]
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
-        match event {
-            Event::Key(KeyEvent {
-                code,
-                modifiers,
-                // kind: KeyEventKind::Press, //NB: for Windows only
-                ..
-            }) => match (code, *modifiers) {
-                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                    self.should_quit = true;
+            match read() {
+                Ok(event) => self.evaluate_event(event),
+                //TODO: we need better error handling here
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {err:?}");
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        let _ = err;
+                    }
                 }
-                (
-                    KeyCode::Up
-                    | KeyCode::Down
-                    | KeyCode::Left
-                    | KeyCode::Right
-                    | KeyCode::PageDown
-                    | KeyCode::PageUp
-                    | KeyCode::End
-                    | KeyCode::Home,
-                    _,
-                ) => {
-                    self.move_point(code)?;
-                }
-                _ => {}
-            },
-            Event::Resize(width_u16, height_u16) => {
-                // TODO: probably we should get rid of u16 precocious re-casting? -> similar in Terminal::size()
-                // clippy::as_conversions: Will run into problems for rare edge case systems where usize < u16
-                #[allow(clippy::as_conversions)]
-                let height = *height_u16 as usize;
-                // clippy::as_conversions: Will run into problems for rare edge case systems where usize < u16
-                #[allow(clippy::as_conversions)]
-                let width = *width_u16 as usize;
-                self.view.resize(Size { height, width });
             }
-            _ => {}
+            self.refresh_status();
         }
-        Ok(())
     }
 
-    fn move_point(&mut self, key_code: &KeyCode) -> Result<(), Error> {
-        let Size { height, width } = Terminal::size()?;
-        match key_code {
-            KeyCode::Up => {
-                self.location.y = self.location.y.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                self.location.y = min(height.saturating_sub(1), self.location.y.saturating_add(1));
-            }
-            KeyCode::Left => {
-                self.location.x = self.location.x.saturating_sub(1);
-            }
-            KeyCode::Right => {
-                self.location.x = min(width.saturating_sub(1), self.location.x.saturating_add(1));
-            }
-            KeyCode::PageUp => {
-                self.location.y = 0;
-            }
-            KeyCode::PageDown => {
-                self.location.y = height.saturating_sub(1);
-            }
-            KeyCode::Home => {
-                self.location.x = 0;
-            }
-            KeyCode::End => {
-                self.location.x = width.saturating_sub(1);
-            }
-            _ => (),
+    // TODO: perhaps we could return Result<(), Error> here and from run() too
+    //  and handle errors in main -> avoid discarding union results from Terminal::hide_caret() e.g.
+    //  and also remove error hook in Editor::new() (?!)
+    fn refresh_screen(&mut self) {
+        if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
+            return;
         }
-        Ok(())
-    }
 
-    fn refresh_screen(&mut self) -> Result<(), Error> {
-        Terminal::hide_cursor()?;
-        Terminal::move_cursor_to(Position::default())?;
-        if self.should_quit {
-            // TODO: move logic inside terminate??
-            // https://stackoverflow.com/questions/78174550/crossterm-not-clearing-screen-properly
-            Terminal::clear_screen()?;
+        // TODO: extract step in separate functions -> render_bottom_bar, render_view etc
+        let bottom_bar_row = self.terminal_size.height.saturating_sub(1);
+        let _ = Terminal::hide_caret();
+        if self.in_prompt() {
+            self.command_bar.render(bottom_bar_row);
         } else {
-            self.view.render()?;
-            Terminal::move_cursor_to(Position {
-                col: self.location.x,
-                row: self.location.y,
-            })?;
+            self.message_bar.render(bottom_bar_row);
         }
-        Terminal::show_cursor()?;
-        Terminal::execute()?;
-        Ok(())
+
+        // if self.terminal_size.height > 1 {
+        //     self.status_bar
+        //         .render(self.terminal_size.height.saturating_sub(2));
+        // }
+        // if self.terminal_size.height > 2 {
+        //     self.view.render(0);
+        // }
+        //
+        // let new_caret_pos = if self.in_prompt() {
+        //     Position {
+        //         row: bottom_bar_row,
+        //         col: self.command_bar.caret_position_col(),
+        //     }
+        // } else {
+        //     self.view.caret_position()
+        // };
+        // debug_assert!(new_caret_pos.col <= self.terminal_size.width);
+        // debug_assert!(new_caret_pos.row <= self.terminal_size.height);
+
+        // let _ = Terminal::move_caret_to(new_caret_pos);
+        let _ = Terminal::show_caret();
+        let _ = Terminal::execute();
+    }
+
+    fn in_prompt(&self) -> bool {
+        // TODO: simplify and combine in one fn
+        !self.prompt_type.is_none()
     }
 }
