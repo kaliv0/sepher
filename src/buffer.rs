@@ -51,6 +51,14 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
+    pub fn from(file_name: &str) -> Self {
+        // let path = PathBuf::from(file_name);
+        Self {
+            // path: Some(path),
+            path: Some(PathBuf::from(file_name)),
+        }
+    }
+
     fn get_path(&self) -> Option<&Path> {
         self.path.as_deref()
     }

@@ -1,21 +1,36 @@
+use crate::command_bar::CommandBar;
 use crate::message_bar::MessageBar;
 use crate::status_bar::StatusBar;
 use crate::terminal::Terminal;
-use crate::ui_component::UIComponent;
 use crate::util::Size;
 use crate::view::View;
+use crossterm::event::read;
 use std::env;
 use std::io::Error;
 use std::panic::{set_hook, take_hook};
 
+#[derive(Eq, PartialEq, Default)]
+enum PromptType {
+    Search,
+    Save,
+    #[default]
+    None,
+}
+
+impl PromptType {
+    fn is_none(&self) -> bool {
+        *self == PromptType::None
+    }
+}
+
 #[derive(Default)]
 pub struct Editor {
-    // should_quit: bool,
+    should_quit: bool,
     view: View,
     status_bar: StatusBar,
     message_bar: MessageBar,
-    // command_bar: CommandBar,
-    // prompt_type: PromptType,
+    command_bar: CommandBar,
+    prompt_type: PromptType,
     terminal_size: Size,
     title: String,
     // quit_times: u8,
@@ -60,7 +75,7 @@ impl Editor {
         };
         self.message_bar.resize(bar_size);
         self.status_bar.resize(bar_size);
-        // self.command_bar.resize(bar_size);
+        self.command_bar.resize(bar_size);
     }
 
     fn update_message(&mut self, new_message: &str) {
@@ -77,5 +92,76 @@ impl Editor {
             // if title != self.title && Terminal::set_title(&title).is_ok() {
             self.title = title;
         }
+    }
+
+    ///////////////////////////////
+    pub fn run(&mut self) {
+        loop {
+            self.refresh_screen();
+            if self.should_quit {
+                break;
+            }
+            match read() {
+                Ok(event) => self.evaluate_event(event),
+                //TODO: we need better error handling here
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {err:?}");
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        let _ = err;
+                    }
+                }
+            }
+            self.refresh_status();
+        }
+    }
+
+    // TODO: perhaps we could return Result<(), Error> here and from run() too
+    //  and handle errors in main -> avoid discarding union results from Terminal::hide_caret() e.g.
+    //  and also remove error hook in Editor::new() (?!)
+    fn refresh_screen(&mut self) {
+        if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
+            return;
+        }
+
+        // TODO: extract step in separate functions -> render_bottom_bar, render_view etc
+        let bottom_bar_row = self.terminal_size.height.saturating_sub(1);
+        let _ = Terminal::hide_caret();
+        if self.in_prompt() {
+            self.command_bar.render(bottom_bar_row);
+        } else {
+            self.message_bar.render(bottom_bar_row);
+        }
+
+        // if self.terminal_size.height > 1 {
+        //     self.status_bar
+        //         .render(self.terminal_size.height.saturating_sub(2));
+        // }
+        // if self.terminal_size.height > 2 {
+        //     self.view.render(0);
+        // }
+        //
+        // let new_caret_pos = if self.in_prompt() {
+        //     Position {
+        //         row: bottom_bar_row,
+        //         col: self.command_bar.caret_position_col(),
+        //     }
+        // } else {
+        //     self.view.caret_position()
+        // };
+        // debug_assert!(new_caret_pos.col <= self.terminal_size.width);
+        // debug_assert!(new_caret_pos.row <= self.terminal_size.height);
+
+        // let _ = Terminal::move_caret_to(new_caret_pos);
+        let _ = Terminal::show_caret();
+        let _ = Terminal::execute();
+    }
+
+    fn in_prompt(&self) -> bool {
+        // TODO: simplify and combine in one fn
+        !self.prompt_type.is_none()
     }
 }

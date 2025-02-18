@@ -1,5 +1,4 @@
 use crate::document_status::DocumentStatus;
-use crate::ui_component::UIComponent;
 use crate::util::Size;
 
 #[derive(Default)]
@@ -16,9 +15,7 @@ impl StatusBar {
             self.set_needs_redraw(true);
         }
     }
-}
 
-impl UIComponent for StatusBar {
     //TODO: annoyingly redundant getters & setters
     fn needs_redraw(&self) -> bool {
         self.needs_redraw
@@ -30,5 +27,10 @@ impl UIComponent for StatusBar {
 
     fn set_size(&mut self, size: Size) {
         self.size = size;
+    }
+
+    pub(crate) fn resize(&mut self, size: Size) {
+        self.set_size(size);
+        self.set_needs_redraw(true);
     }
 }

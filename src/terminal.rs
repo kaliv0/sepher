@@ -79,7 +79,7 @@ impl Terminal {
         Ok(())
     }
 
-    fn execute() -> Result<(), Error> {
+    pub(crate) fn execute() -> Result<(), Error> {
         stdout().flush()?;
         Ok(())
     }

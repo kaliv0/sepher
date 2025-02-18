@@ -1,6 +1,5 @@
 use crate::buffer::Buffer;
 use crate::document_status::DocumentStatus;
-use crate::ui_component::UIComponent;
 use crate::util::{Location, Size};
 use std::io::Error;
 
@@ -37,9 +36,7 @@ impl View {
         // self.scroll_vertically(row);
         // self.scroll_horizontally(col);
     }
-}
 
-impl UIComponent for View {
     fn needs_redraw(&self) -> bool {
         self.needs_redraw
     }
@@ -51,5 +48,10 @@ impl UIComponent for View {
     fn set_size(&mut self, size: Size) {
         self.size = size;
         self.scroll_text_location_into_view();
+    }
+
+    pub fn resize(&mut self, size: Size) {
+        self.set_size(size);
+        self.set_needs_redraw(true);
     }
 }

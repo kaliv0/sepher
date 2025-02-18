@@ -4,3 +4,7 @@ Editor::new
 
 -----------------------
 remove as re-casting because of usize < u16 -> e.g. terminal.size()
+remove graphemes and overall reading of not-utf8 chars
+remove all debug_assert!
+remove UIComponent trait -> simple getters and setters
+rename caret to cursor
