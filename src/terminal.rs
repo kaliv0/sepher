@@ -1,5 +1,6 @@
-use crate::util::Size;
-use crossterm::cursor::{Hide, Show};
+use crate::util::{Position, Size};
+use crossterm::cursor::{Hide, MoveTo, Show};
+use crossterm::style::Print;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen,
     LeaveAlternateScreen, SetTitle,
@@ -74,12 +75,35 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
+        Self::move_caret_to(Position { row, col: 0 })?;
+        Self::clear_line()?;
+        Self::print(line_text)?;
+        Ok(())
+    }
+
+    fn print(string: &str) -> Result<(), Error> {
+        Self::queue_command(Print(string))?;
+        Ok(())
+    }
+
+    fn move_caret_to(position: Position) -> Result<(), Error> {
+        #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+        Self::queue_command(MoveTo(position.col as u16, position.row as u16))?;
+        Ok(())
+    }
+
+    fn clear_line() -> Result<(), Error> {
+        Self::queue_command(Clear(ClearType::CurrentLine))?;
+        Ok(())
+    }
+
     fn queue_command<T: Command>(command: T) -> Result<(), Error> {
         queue!(stdout(), command)?;
         Ok(())
     }
 
-    pub(crate) fn execute() -> Result<(), Error> {
+    pub fn execute() -> Result<(), Error> {
         stdout().flush()?;
         Ok(())
     }

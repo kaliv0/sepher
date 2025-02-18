@@ -29,7 +29,7 @@ impl StatusBar {
         self.size = size;
     }
 
-    pub(crate) fn resize(&mut self, size: Size) {
+    pub fn resize(&mut self, size: Size) {
         self.set_size(size);
         self.set_needs_redraw(true);
     }

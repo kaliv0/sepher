@@ -130,16 +130,16 @@ impl Editor {
         // TODO: extract step in separate functions -> render_bottom_bar, render_view etc
         let bottom_bar_row = self.terminal_size.height.saturating_sub(1);
         let _ = Terminal::hide_caret();
-        if self.in_prompt() {
-            self.command_bar.render(bottom_bar_row);
-        } else {
-            self.message_bar.render(bottom_bar_row);
-        }
-
-        // if self.terminal_size.height > 1 {
-        //     self.status_bar
-        //         .render(self.terminal_size.height.saturating_sub(2));
+        // if self.in_prompt() {
+        //     self.command_bar.render(bottom_bar_row);
+        // } else {
+        self.message_bar.render(bottom_bar_row);
         // }
+
+        if self.terminal_size.height > 1 {
+            self.status_bar
+                .render(self.terminal_size.height.saturating_sub(2));
+        }
         // if self.terminal_size.height > 2 {
         //     self.view.render(0);
         // }

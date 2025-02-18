@@ -1,3 +1,4 @@
+pub mod annotation;
 pub mod buffer;
 pub mod command_bar;
 pub mod document_status;

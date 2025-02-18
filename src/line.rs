@@ -99,4 +99,74 @@ impl Line {
     pub fn grapheme_count(&self) -> usize {
         self.fragments.len()
     }
+
+    // pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
+    //     self.get_annotated_visible_substr(range, None).to_string()
+    // }
+    //
+    // pub fn get_annotated_visible_substr(
+    //     &self,
+    //     range: Range<usize>,
+    //     annotations: Option<&Vec<Annotation>>,
+    // ) -> AnnotatedString {
+    //     if range.start >= range.end {
+    //         return AnnotatedString::default();
+    //     }
+    //     // Create a new annotated string
+    //     let mut result = AnnotatedString::from(&self.string);
+    //
+    //     // Apply annotations for this string
+    //     if let Some(annotations) = annotations {
+    //         for annotation in annotations {
+    //             result.add_annotation(annotation.annotation_type, annotation.start, annotation.end);
+    //         }
+    //     }
+    //
+    //     // Insert replacement characters, and truncate if needed.
+    //     // We do this backwards, otherwise the byte indices would be off
+    //     // in case a replacement character has a different width than the original character.
+    //     let mut fragment_start = self.width();
+    //     for fragment in self.fragments.iter().rev() {
+    //         let fragment_end = fragment_start;
+    //         fragment_start = fragment_start.saturating_sub(fragment.rendered_width.into());
+    //
+    //         if fragment_start > range.end {
+    //             continue; // No  processing needed if we haven't reached the visible range yet.
+    //         }
+    //
+    //         // clip right if the fragment is partially visible
+    //         if fragment_start < range.end && fragment_end > range.end {
+    //             result.replace(fragment.start, self.string.len(), "⋯");
+    //             continue;
+    //         } else if fragment_start == range.end {
+    //             // Truncate right if we've reached the end of the visible range
+    //             result.truncate_right_from(fragment.start);
+    //             continue;
+    //         }
+    //
+    //         // Fragment ends at the start of the range: Remove the entire left side of the string (if not already at start of string)
+    //         if fragment_end <= range.start {
+    //             result.truncate_left_until(fragment.start.saturating_add(fragment.grapheme.len()));
+    //             break; //End processing since all remaining fragments will be invisible.
+    //         } else if fragment_start < range.start && fragment_end > range.start {
+    //             // Fragment overlaps with the start of range: Remove the left side of the string and add an ellipsis
+    //             result.replace(
+    //                 0,
+    //                 fragment.start.saturating_add(fragment.grapheme.len()),
+    //                 "⋯",
+    //             );
+    //             break; //End processing since all remaining fragments will be invisible.
+    //         }
+    //
+    //         // Fragment is fully within range: Apply replacement characters if appropriate
+    //         if fragment_start >= range.start && fragment_end <= range.end {
+    //             if let Some(replacement) = fragment.replacement {
+    //                 let start = fragment.start;
+    //                 let end = start.saturating_add(fragment.grapheme.len());
+    //                 result.replace(start, end, &replacement.to_string());
+    //             }
+    //         }
+    //     }
+    //     result
+    // }
 }
